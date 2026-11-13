@@ -1,4 +1,4 @@
-// EcoLimit API — Cloudflare Pages Functions + D1
+// EcoLimit API — Cloudflare Workers + D1
 // Barcha /api/* so'rovlari shu fayl orqali o'tadi.
 
 const SESSION_DAYS = 7;
@@ -485,10 +485,9 @@ function factoryFields(b) {
   return { demand, hour_start: hs, hour_end: he, size, sector: str(b.sector, 80) };
 }
 
-export async function onRequest(context) {
-  const { request, env, params } = context;
+export async function handleApi(request, env) {
   if (!env.DB) return err("D1 baza ulanmagan (DB binding yo'q)", 500);
-  const path = (Array.isArray(params.path) ? params.path.join("/") : params.path || "").replace(/\/+$/, "");
+  const path = new URL(request.url).pathname.replace(/^\/api\/?/, "").replace(/\/+$/, "");
   try {
     return await route(request, env, path, request.method);
   } catch (e) {

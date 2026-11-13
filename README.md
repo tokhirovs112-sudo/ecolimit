@@ -2,7 +2,7 @@
 
 Havo ifloslanishini oldindan tahlil qilib, uning oldini olishga yordam beradigan platforma. Har bir korxonaga **mahsulotiga bo'lgan talab** va **limitdan haqiqiy foydalanishi**ni hisobga olib, individual CO₂ limiti ajratiladi.
 
-**Stack:** Cloudflare Pages (statik frontend) + Pages Functions (API) + D1 (SQLite baza). Build qadami yo'q, tashqi npm paketlar ham yo'q.
+**Stack:** Cloudflare Workers (static assets + API) va D1 (SQLite baza). Build qadami ham, tashqi npm paketlar ham yo'q.
 
 ## Imkoniyatlar
 
@@ -36,45 +36,20 @@ Qo'shimcha limit bosqichli narxda beriladi (standart holatda: 0–5% → 18 $/t,
 
 ## Cloudflare'ga joylash
 
-### 1. D1 bazasini yarating
-Cloudflare Dashboard → **Storage & Databases → D1** → **Create database**. Nomini `ecolimit-db` qiling, keyin **Database ID** ni nusxalab oling.
+Loyiha Cloudflare **Workers** sifatida ishlaydi. Barcha sozlamalar [`wrangler.jsonc`](wrangler.jsonc) faylida turadi, jumladan D1 bazasi ham (`DB` → `ecolimit-db`).
 
-### 2. Jadvallarni yarating
-D1 → `ecolimit-db` → **Console** bo'limiga [`migrations/0001_init.sql`](migrations/0001_init.sql) faylining butun matnini qo'ying va **Execute** tugmasini bosing.
+1. **D1 bazasini yarating.** Nomi `ecolimit-db` bo'lsin. Keyin `migrations/0001_init.sql` faylini bazaning **Console** bo'limida bajaring.
+2. **ID ni yozing.** `wrangler.jsonc` faylidagi `database_id` qiymatini o'z bazangizning ID si bilan almashtiring.
+3. **Reponi ulang.** **Workers & Pages → Create application → Continue with GitHub** orqali shu reponi tanlang. Deploy buyrug'i: `npx wrangler deploy`.
+4. **Admin yarating.** Saytni birinchi marta ochganingizda **«Birinchi sozlash»** sahifasida admin akkauntini yarating.
 
-### 3. Pages loyihasini GitHub'ga ulang
-**Workers & Pages → Create → Pages → Connect to Git** → `ecolimit` reposini tanlang.
-- Framework preset: **None**
-- Build command: *(bo'sh qoldiring)*
-- Build output directory: `public`
-
-### 4. Bazani ulang
-Pages loyihasi → **Settings → Bindings → Add → D1 database**:
-- Variable name: `DB`
-- Database: `ecolimit-db`
-
-Keyin **Deployments** bo'limida oxirgi deploy'ni **Retry deployment** bilan qayta ishga tushiring.
-
-### 5. Birinchi kirish
-Saytni ochganingizda **«Birinchi sozlash»** sahifasi chiqadi. U yerda admin akkauntini yarating. Shundan keyin korxonalarni qo'shib, ularga login va parol berasiz.
-
-> Keyinchalik `main` branch'ga qilingan har bir push saytni avtomatik yangilaydi.
-
-### Wrangler CLI bilan (ixtiyoriy)
-Repoda `wrangler.toml` yo'q. Agar u bo'lsa, Cloudflare dashboard'dagi Bindings sozlamalari bloklanib qoladi. CLI'dan foydalanmoqchi bo'lsangiz, `wrangler.toml.example` faylidan nusxa oling:
-```bash
-cp wrangler.toml.example wrangler.toml
-npx wrangler d1 create ecolimit-db           # chiqqan database_id ni wrangler.toml ga yozing
-npx wrangler d1 migrations apply ecolimit-db --remote
-npx wrangler pages deploy public
-```
+`main` branch'ga qilingan har bir push saytni avtomatik yangilaydi.
 
 ## Lokal ishga tushirish
 ```bash
-cp wrangler.toml.example wrangler.toml
 npx wrangler d1 migrations apply ecolimit-db --local
-npx wrangler pages dev
-# http://localhost:8788
+npx wrangler dev
+# http://localhost:8787
 ```
 
 ## Xavfsizlik
