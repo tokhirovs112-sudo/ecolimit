@@ -23,7 +23,12 @@ async function api(path, opts = {}) {
   if (opts.body !== undefined) { o.headers["content-type"] = "application/json"; o.body = JSON.stringify(opts.body); }
   else if (o.method !== "GET") { o.headers["content-type"] = "application/json"; o.body = "{}"; }
   let r;
-  try { r = await fetch("/api/" + path, o); } catch { throw new Error("Server bilan aloqa yo'q"); }
+  const ctl = new AbortController();
+  const tm = setTimeout(() => ctl.abort(), opts.timeout || 20000);
+  o.signal = ctl.signal;
+  try { r = await fetch("/api/" + path, o); }
+  catch { throw new Error("Server bilan aloqa yo'q. Internetni tekshirib, qayta urinib ko'ring"); }
+  finally { clearTimeout(tm); }
   let data = {};
   try { data = await r.json(); } catch {}
   if (r.status === 401 && path !== "login" && ME) { ME = null; boot(); throw new Error("Sessiya tugadi"); }
@@ -147,7 +152,11 @@ function renderShell() {
     <nav class="top">${NAV[ME.role].map(([k, t]) => `<a href="#${k}" data-k="${k}">${t}<span class="badge hidden" data-badge="${k}"></span></a>`).join("")}</nav>
     <div class="who"><span>${who}</span><button class="logout" id="logout">⎋ Chiqish</button></div>
   </header><main id="view"></main>`;
-  $("#logout").onclick = async () => { try { await api("logout", { method: "POST" }); } catch {} ME = null; location.hash = ""; boot(); };
+  $("#logout").onclick = () => {
+    const b = $("#logout"); b.disabled = true; b.textContent = "Chiqilmoqda…";
+    ME = null;
+    location.replace("/api/logout"); // server cookie'ni o'chiradi va bosh sahifaga qaytaradi
+  };
 }
 function badge(k, n) { const b = $(`[data-badge="${k}"]`); if (!b) return; b.textContent = n; b.classList.toggle("hidden", !n); }
 

@@ -218,14 +218,17 @@ async function route(req, env, path, method) {
     return json({ ok: true, role: u.role }, 200, { "set-cookie": await createSession(env, u.id, secure) });
   }
 
+  // Chiqish: sessiyasi bo'lmasa ham ishlaydi. GET — oddiy sahifa navigatsiyasi orqali (fetch'ga bog'liq emas).
+  if (path === "logout" && (method === "GET" || method === "POST")) {
+    const tok = getCookie(req, "eco_session");
+    if (tok && /^[0-9a-f]{64}$/.test(tok)) await db.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await sha256(tok)).run();
+    const clear = `eco_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure ? "; Secure" : ""}`;
+    if (method === "GET") return new Response(null, { status: 303, headers: { location: "/", "set-cookie": clear, "cache-control": "no-store" } });
+    return json({ ok: true }, 200, { "set-cookie": clear });
+  }
+
   const user = await currentUser(env, req);
   if (!user) return err("Tizimga kiring", 401);
-
-  if (path === "logout" && method === "POST") {
-    const tok = getCookie(req, "eco_session");
-    if (tok) await db.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await sha256(tok)).run();
-    return json({ ok: true }, 200, { "set-cookie": "eco_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0" });
-  }
 
   if (path === "me" && method === "GET") {
     let factory = null;
